@@ -1,0 +1,177 @@
+/***************************
+NodeMCU v3, wemos MINI
+D0 = GPIO16
+D1 = GPIO5
+D2 = GPIO4
+D3 = GPIO0
+D4 = GPIO2
+D5 = GPIO14
+D6 = GPIO12
+D7 = GPIO13
+D8 = GPIO15
+*****************************/
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
+#define ledPin1 D6
+#define switchPin1 D2
+
+
+/*******switch-pullup**********/
+boolean lastButton1 = LOW;
+boolean currentButton1 = LOW;
+boolean ledOn1 = false;
+
+/*******wifi-mqtt**********/
+const char* ssid = "my_technology";
+const char* password = "35k4nu54marina";
+const char* mqtt_server = "broker.mqtt-dashboard.com";
+const int mqttPort = 1883;
+const char* mqttUser = "ronaltama";
+const char* mqttPassword ="Ronaltama12345";
+
+//Static IP address configuration
+IPAddress staticIP(192, 168, 128, 251); //ESP static ip
+IPAddress gateway(192, 168, 128, 1);   //IP Address of your WiFi Router (Gateway)
+IPAddress subnet(255, 255, 255, 0);  //Subnet mask
+IPAddress dns(8, 8, 8, 8);  //DNS
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+long lastMsg = 0;
+char msg[50];
+int value = 0;
+
+void setup_wifi() {
+
+  delay(10);
+  // We start by connecting to a WiFi network
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  WiFi.config(staticIP, gateway, subnet, dns);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  randomSeed(micros());
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+
+  // Switch on the LED if an 1 was received as first character
+  if ((char)payload[0] == '0') { // Here we are comparing if ON command is coming from server. 
+    ledOn1 = !ledOn1;
+    digitalWrite(ledPin1, ledOn1? HIGH : LOW);
+    client.publish("home/chandra/bedroom/strip", "1");
+  } else {
+    ledOn1 = !ledOn1;
+    digitalWrite(ledPin1, ledOn1? LOW : HIGH);
+    client.publish("home/chandra/bedroom/strip", "0");
+    
+  }
+
+}
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Create a random client ID
+    String clientId = "ESP8266Client-";
+    clientId += String(random(0xffff), HEX);
+    // Attempt to connect
+    if (client.connect(clientId.c_str())) {
+      Serial.println("connected");
+       digitalWrite(BUILTIN_LED, LOW);
+      client.publish("home/chandra/bedroom/strip", "0");
+      client.subscribe("home/chandra/bedroom/strip/set");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+
+void setup() {
+
+  pinMode(BUILTIN_LED, OUTPUT);     // on board led for mqtt status indication.
+  pinMode(ledPin1, OUTPUT); // our led is connected to D6
+  pinMode(switchPin1, INPUT_PULLUP);
+  Serial.begin(115200);
+  setup_wifi();
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
+  digitalWrite(BUILTIN_LED, HIGH);
+}
+
+/************switch-boolean*********/
+boolean debounce1(boolean last1)
+{
+  boolean current1 = digitalRead(switchPin1);
+  if (last1 != current1)
+  {
+    delay(5);
+    current1 = digitalRead(switchPin1);  
+    Status();
+  }
+  return current1;
+}
+
+void loop() {
+
+  if (!client.connected()) {
+     digitalWrite(BUILTIN_LED, HIGH);
+    reconnect();
+  }
+  client.loop();
+  Switch1();
+}
+
+
+/************switch*********/
+void Switch1()
+{
+  currentButton1 = debounce1(lastButton1);
+  if (lastButton1 == HIGH && currentButton1 == LOW)
+  {
+    ledOn1 = !ledOn1; 
+    
+  }
+  lastButton1 = currentButton1;
+  { 
+  digitalWrite(ledPin1, ledOn1); 
+  
+  }  
+}
+
+
+void Status()
+{
+if  (digitalRead(ledPin1)) {
+    client.publish("home/relay/switch/set","1");
+    Serial.print("\n>");
+    Serial.println("on");
+    } else {
+    client.publish("home/relay/switch/set","0");
+    Serial.print("\n>");
+    Serial.println("off");
+    } 
+}
