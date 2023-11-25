@@ -77,11 +77,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if ((char)payload[0] == '0') { // Here we are comparing if ON command is coming from server. 
     ledOn1 = !ledOn1;
     digitalWrite(ledPin1, ledOn1? HIGH : LOW);
-    client.publish("home/chandra/bedroom/strip", "1");
+    client.publish("ronal/example", "1");
   } else {
     ledOn1 = !ledOn1;
     digitalWrite(ledPin1, ledOn1? LOW : HIGH);
-    client.publish("home/chandra/bedroom/strip", "0");
+    client.publish("ronal/example", "0");
     
   }
 
@@ -98,8 +98,8 @@ void reconnect() {
     if (client.connect(clientId.c_str())) {
       Serial.println("connected");
        digitalWrite(BUILTIN_LED, LOW);
-      client.publish("home/chandra/bedroom/strip", "0");
-      client.subscribe("home/chandra/bedroom/strip/set");
+      client.publish("ronal/example", "0");
+      client.subscribe("ronal/example");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -166,11 +166,11 @@ void Switch1()
 void Status()
 {
 if  (digitalRead(ledPin1)) {
-    client.publish("home/relay/switch/set","1");
+    client.publish("ronal/example","1");
     Serial.print("\n>");
     Serial.println("on");
     } else {
-    client.publish("home/relay/switch/set","0");
+    client.publish("ronal/example","0");
     Serial.print("\n>");
     Serial.println("off");
     } 
